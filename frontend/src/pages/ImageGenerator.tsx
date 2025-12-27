@@ -78,27 +78,43 @@ const ImageGenerator = () => {
       const requestData: GenerateImageRequest = {
         prompt: prompt.trim(),
         style: selectedStyle,
-        model: "stabilityai/sdxl",
         size: "1024x1024"
       }
 
-      const response = await axios.post<ApiResponse<{ images: GeneratedImage[] }>>('/api/agent/image', requestData)
+      const response = await axios.post<ApiResponse<{ success: boolean; images: GeneratedImage[]; error?: string }>>('/api/images/generate', requestData)
 
       if (response.data.success && response.data.data && response.data.data.images.length > 0) {
         setGeneratedImages(response.data.data.images)
 
         toast({
           title: "🎨 Image generated successfully!",
-          description: `Created with Stability AI SDXL using ${selectedStyle} style`,
+          description: `Created with OpenRouter GPT-Image-1 using ${selectedStyle} style`,
         })
       } else {
-        throw new Error(response.data.error || 'Failed to generate image')
+        throw new Error(response.data.data?.error || response.data.error || 'Failed to generate image')
       }
     } catch (error: any) {
       console.error('Image generation error:', error)
+
+      // Extract error message safely
+      let errorMessage = "Failed to generate image. Please try again."
+
+      if (error?.response?.data?.error) {
+        const errorData = error.response.data.error
+        if (typeof errorData === 'string') {
+          errorMessage = errorData
+        } else if (typeof errorData === 'object' && errorData?.message) {
+          errorMessage = errorData.message
+        }
+      } else if (error?.message) {
+        errorMessage = typeof error.message === 'string'
+          ? error.message
+          : error.message?.message || errorMessage
+      }
+
       toast({
         title: "Generation failed",
-        description: error?.response?.data?.error || error.message || "Failed to generate image. Please try again.",
+        description: errorMessage,
         variant: "destructive"
       })
     } finally {
@@ -461,4 +477,5 @@ const ImageGenerator = () => {
   )
 }
 
+// ImageGenerator component export
 export default ImageGenerator
